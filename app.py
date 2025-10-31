@@ -11,10 +11,22 @@ API_URL = "https://db.ygoprodeck.com/api/v7/cardinfo.php"
 response = requests.get(API_URL)
 all_cards = []
 
+# Godly tier cards - 3,500,000 coins each
+godly_tier_cards = ["Obelisk the Tormentor", "The Winged Dragon of Ra", "Slifer the Sky Dragon", "Pot of Greed"]
+
 def normalize_type(card_type):
     card_type = card_type.lower()
     if 'monster' in card_type:
-        return 'Monster'
+        if 'xyz' in card_type:
+            return 'XYZ'
+        elif 'synchro' in card_type:
+            return 'Synchro'
+        elif 'fusion' in card_type:
+            return 'Fusion'
+        elif 'ritual' in card_type:
+            return 'Ritual'
+        else:
+            return 'Normal'
     elif 'spell' in card_type:
         return 'Spell'
     elif 'trap' in card_type:
@@ -60,19 +72,28 @@ MAIN_TEMPLATE = """
         .card:hover { transform:scale(1.05); }
         .card img { width:100%; border-radius:8px; }
         .stats { display:flex; justify-content:space-around; margin-top:8px; }
-        a.button { display:inline-block; padding:10px 20px; margin-top:10px; background-color:#4CAF50; color:white; border-radius:5px; text-decoration:none; }
+        a.button { display:inline-block; padding:10px 20px; margin-top:10px; background-color:#4CAF50; color:white; border-radius:5px; text-decoration:none; margin:5px; }
         a.button:hover { background-color:#45a049; }
+        .godly-tier { border: 3px solid gold; box-shadow: 0 0 15px gold; }
     </style>
 </head>
 <body>
     <h1>Yu-Gi-Oh! Card Search</h1>
-    <a href="/second" class="button">Go to Clicker Page</a>
+    <div>
+        <a href="/" class="button">Main Page</a>
+        <a href="/second" class="button">Clicker & Shop</a>
+        <a href="/third" class="button">Deck Builder</a>
+    </div>
 
     <form id="searchForm">
         <input type="text" id="searchInput" placeholder="Search card name...">
         <select id="typeFilter">
-            <option value="">All</option>
-            <option value="Monster">Monster</option>
+            <option value="">All Types</option>
+            <option value="Normal">Normal</option>
+            <option value="XYZ">XYZ</option>
+            <option value="Synchro">Synchro</option>
+            <option value="Fusion">Fusion</option>
+            <option value="Ritual">Ritual</option>
             <option value="Spell">Spell</option>
             <option value="Trap">Trap</option>
         </select>
@@ -167,7 +188,7 @@ CLICKER_TEMPLATE = """
         .card{background:#1a1a1a;border-radius:10px;padding:10px;width:180px;text-align:center;box-shadow:0 0 10px rgba(255,255,255,0.1);transition:transform 0.2s;}
         .card:hover{transform:scale(1.05);}
         .card img{width:100%;border-radius:8px;}
-        a.button{display:inline-block;padding:10px 20px;margin-top:10px;background-color:#4CAF50;color:white;border-radius:5px;text-decoration:none;}
+        a.button{display:inline-block;padding:10px 20px;margin-top:10px;background-color:#4CAF50;color:white;border-radius:5px;text-decoration:none; margin:5px;}
         a.button:hover{background-color:#45a049;}
         #clickButton { width:257px; cursor:pointer; touch-action: manipulation; }
         #clickButton:active { opacity:0.8; }
@@ -175,11 +196,16 @@ CLICKER_TEMPLATE = """
         input[type=text], select { padding: 6px; border-radius:5px; border:none; margin-right:5px; }
         button { padding:6px 10px; border-radius:5px; border:none; background-color:#4CAF50; color:white; cursor:pointer; }
         button:hover { background-color:#45a049; }
+        .godly-tier { border: 3px solid gold; box-shadow: 0 0 15px gold; }
     </style>
 </head>
 <body>
     <h1>Yu-Gi-Oh! Clicker</h1>
-    <a href="/" class="button">Back to Main Page</a>
+    <div>
+        <a href="/" class="button">Main Page</a>
+        <a href="/second" class="button">Clicker & Shop</a>
+        <a href="/third" class="button">Deck Builder</a>
+    </div>
 
     <div>
         <h2>Yugi Coins: <span id="coins">0</span></h2>
@@ -190,8 +216,12 @@ CLICKER_TEMPLATE = """
     <form id="shopSearchForm">
         <input type="text" id="shopSearchInput" placeholder="Search card name...">
         <select id="shopTypeFilter">
-            <option value="">All</option>
-            <option value="Monster">Monster</option>
+            <option value="">All Types</option>
+            <option value="Normal">Normal</option>
+            <option value="XYZ">XYZ</option>
+            <option value="Synchro">Synchro</option>
+            <option value="Fusion">Fusion</option>
+            <option value="Ritual">Ritual</option>
             <option value="Spell">Spell</option>
             <option value="Trap">Trap</option>
         </select>
@@ -229,6 +259,7 @@ CLICKER_TEMPLATE = """
         const clickButton=document.getElementById('clickButton');
         const loadingShop=document.getElementById('loadingShop');
         const allCards={{ all_cards|tojson }};
+        const godlyTierCards = ["Obelisk the Tormentor", "The Winged Dragon of Ra", "Slifer the Sky Dragon", "Pot of Greed"];
         let shopLoading=false;
         let shopFilteredCards = allCards.slice();
         let searchTerm='';
@@ -236,6 +267,9 @@ CLICKER_TEMPLATE = """
         let atkTerm='';
 
         function getCardPrice(card){
+            // Godly tier cards cost 3,500,000 coins
+            if(godlyTierCards.includes(card.name)) return 3500000;
+            
             const atk=card.atk||0;
             if(atk<=999) return 500;
             if(atk<=1999) return 2000;
@@ -246,6 +280,9 @@ CLICKER_TEMPLATE = """
         }
 
         function getCardBoost(card){
+            // Godly tier cards give massive boost
+            if(godlyTierCards.includes(card.name)) return 10000;
+            
             const price = getCardPrice(card);
             const atk = card.atk || 0;
             if(price >= 100000) return 25;
@@ -283,8 +320,9 @@ CLICKER_TEMPLATE = """
                 const price=getCardPrice(card);
                 const boost=getCardBoost(card);
                 const cardDiv=document.createElement('div');
-                cardDiv.className='card';
-                cardDiv.innerHTML=`<img src="${card.img}" alt="${card.name}" loading="lazy"><h4>${card.name}</h4><p>ATK: ${card.atk} | Boost: ${boost}X</p><p>Price: ${price} Yugi Coins</p><button onclick="buyCard(${allCards.indexOf(card)})">Buy</button>`;
+                const isGodly = godlyTierCards.includes(card.name);
+                cardDiv.className = isGodly ? 'card godly-tier' : 'card';
+                cardDiv.innerHTML=`<img src="${card.img}" alt="${card.name}" loading="lazy"><h4>${card.name}</h4><p>ATK: ${card.atk} | Boost: ${boost}X</p><p>Price: ${price.toLocaleString()} Yugi Coins</p><button onclick="buyCard(${allCards.indexOf(card)})">Buy</button>`;
                 shopContainer.appendChild(cardDiv);
             });
             if(chunk.length>0) shopPage++;
@@ -302,8 +340,7 @@ CLICKER_TEMPLATE = """
             const price = getCardPrice(card);
             const boost = getCardBoost(card);
             if(coins >= price && !purchasedCards.includes(card)){
-                if(price >= 100000) coins = 0;
-                else coins -= price;
+                coins -= price;
                 purchasedCards.push(card);
                 updateClickValue();
                 updateCollection();
@@ -318,7 +355,8 @@ CLICKER_TEMPLATE = """
             collectionContainer.innerHTML='';
             purchasedCards.forEach(card=>{
                 const cardDiv=document.createElement('div');
-                cardDiv.className='card';
+                const isGodly = godlyTierCards.includes(card.name);
+                cardDiv.className = isGodly ? 'card godly-tier' : 'card';
                 cardDiv.innerHTML=`<img src="${card.img}" alt="${card.name}" loading="lazy"><h4>${card.name}</h4><p>Boost: ${getCardBoost(card)}X</p>`;
                 collectionContainer.appendChild(cardDiv);
             });
@@ -330,7 +368,7 @@ CLICKER_TEMPLATE = """
             clickValueDisplay.textContent = clickValue;
         }
 
-        function updateDisplay(){coinsDisplay.textContent=coins;}
+        function updateDisplay(){coinsDisplay.textContent=coins.toLocaleString();}
 
         function addCoins(e){
             e.preventDefault();
@@ -378,8 +416,9 @@ CLICKER_TEMPLATE = """
             }
             purchasedCards.forEach(card=>{
                 const boost = getCardBoost(card);
+                const isGodly = godlyTierCards.includes(card.name);
                 const cardDiv=document.createElement('div');
-                cardDiv.className='card';
+                cardDiv.className = isGodly ? 'card godly-tier' : 'card';
                 cardDiv.innerHTML=`<img src="${card.img}" alt="${card.name}" loading="lazy"><h4>${card.name}</h4><p>ATK: ${card.atk} | Boost: ${boost}X</p>`;
                 shopContainer.appendChild(cardDiv);
             });
@@ -388,6 +427,189 @@ CLICKER_TEMPLATE = """
         loadState();
         loadShop();
         updateDisplay();
+    </script>
+</body>
+</html>
+"""
+
+# ------------------------
+# Deck Builder page template
+# ------------------------
+DECK_BUILDER_TEMPLATE = """
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Yu-Gi-Oh! Deck Builder</title>
+    
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-3FC4FB4V8Y"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-3FC4FB4V8Y');
+    </script>
+    
+    <style>
+        body { font-family:'Segoe UI',sans-serif;background:#0d0d0d;color:white;padding:20px; }
+        h1{color:#ffcc00;text-align:center;}
+        .deck-container { display: grid; grid-template-columns: repeat(8, 1fr); gap: 10px; margin: 20px 0; padding: 20px; background: #1a1a1a; border-radius: 10px; }
+        .deck-slot { width: 80px; height: 120px; border: 2px dashed #444; border-radius: 8px; display: flex; align-items: center; justify-content: center; background: #2a2a2a; transition: all 0.2s; }
+        .deck-slot:hover { border-color: #666; }
+        .deck-slot.occupied { border: 2px solid #4CAF50; }
+        .card { background:#1a1a1a; border-radius:10px; padding:10px; width:100px; text-align:center; box-shadow:0 0 10px rgba(255,255,255,0.1); transition:transform 0.2s; cursor: grab; }
+        .card:hover { transform:scale(1.05); }
+        .card img { width:100%; border-radius:8px; }
+        .card.dragging { opacity: 0.5; }
+        .collection-container { display:flex; flex-wrap:wrap; justify-content:center; gap:15px; margin-top:20px; max-height: 400px; overflow-y: auto; padding: 10px; }
+        a.button { display:inline-block; padding:10px 20px; margin:10px; background-color:#4CAF50; color:white; border-radius:5px; text-decoration:none; }
+        a.button:hover { background-color:#45a049; }
+        .godly-tier { border: 3px solid gold; box-shadow: 0 0 15px gold; }
+        .deck-count { text-align: center; margin: 10px 0; font-size: 18px; }
+    </style>
+</head>
+<body>
+    <h1>Yu-Gi-Oh! Deck Builder</h1>
+    <div style="text-align:center;">
+        <a href="/" class="button">Main Page</a>
+        <a href="/second" class="button">Clicker & Shop</a>
+        <a href="/third" class="button">Deck Builder</a>
+    </div>
+
+    <div class="deck-count">Deck: <span id="deckCount">0</span>/40</div>
+    
+    <h2>Your Deck</h2>
+    <div class="deck-container" id="deckContainer"></div>
+
+    <h2>Your Collection</h2>
+    <div class="collection-container" id="collectionContainer"></div>
+
+    <script>
+        const allCards = {{ all_cards|tojson }};
+        const godlyTierCards = ["Obelisk the Tormentor", "The Winged Dragon of Ra", "Slifer the Sky Dragon", "Pot of Greed"];
+        let purchasedCards = [];
+        let currentDeck = [];
+
+        function loadDeckState() {
+            const savedDeck = JSON.parse(localStorage.getItem('currentDeck') || '[]');
+            const savedCards = JSON.parse(localStorage.getItem('purchasedCards') || '[]');
+            purchasedCards = allCards.filter(c => savedCards.includes(c.name));
+            currentDeck = savedDeck.map(cardName => purchasedCards.find(c => c.name === cardName)).filter(Boolean);
+            renderDeck();
+            renderCollection();
+            updateDeckCount();
+        }
+
+        function saveDeckState() {
+            localStorage.setItem('currentDeck', JSON.stringify(currentDeck.map(c => c.name)));
+        }
+
+        function renderDeck() {
+            const deckContainer = document.getElementById('deckContainer');
+            deckContainer.innerHTML = '';
+            
+            for (let i = 0; i < 40; i++) {
+                const slot = document.createElement('div');
+                slot.className = 'deck-slot';
+                slot.id = `slot-${i}`;
+                slot.setAttribute('data-slot-index', i);
+                
+                if (currentDeck[i]) {
+                    const card = currentDeck[i];
+                    const isGodly = godlyTierCards.includes(card.name);
+                    slot.className += ' occupied';
+                    slot.innerHTML = `
+                        <div class="card ${isGodly ? 'godly-tier' : ''}" draggable="true" data-card-index="${i}">
+                            <img src="${card.img}" alt="${card.name}" loading="lazy">
+                        </div>
+                    `;
+                }
+                
+                slot.addEventListener('dragover', handleDragOver);
+                slot.addEventListener('drop', handleDrop);
+                deckContainer.appendChild(slot);
+            }
+        }
+
+        function renderCollection() {
+            const collectionContainer = document.getElementById('collectionContainer');
+            collectionContainer.innerHTML = '';
+            
+            purchasedCards.forEach((card, index) => {
+                const isGodly = godlyTierCards.includes(card.name);
+                const cardDiv = document.createElement('div');
+                cardDiv.className = `card ${isGodly ? 'godly-tier' : ''}`;
+                cardDiv.draggable = true;
+                cardDiv.setAttribute('data-card-name', card.name);
+                cardDiv.innerHTML = `<img src="${card.img}" alt="${card.name}" loading="lazy"><div style="font-size:12px;margin-top:5px;">${card.name}</div>`;
+                
+                cardDiv.addEventListener('dragstart', handleDragStart);
+                collectionContainer.appendChild(cardDiv);
+            });
+        }
+
+        function updateDeckCount() {
+            document.getElementById('deckCount').textContent = currentDeck.filter(card => card).length;
+        }
+
+        function handleDragStart(e) {
+            e.dataTransfer.setData('text/plain', e.target.getAttribute('data-card-name'));
+            e.target.classList.add('dragging');
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault();
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            const cardName = e.dataTransfer.getData('text/plain');
+            const slotIndex = parseInt(e.target.getAttribute('data-slot-index') || e.target.closest('.deck-slot').getAttribute('data-slot-index'));
+            
+            const card = purchasedCards.find(c => c.name === cardName);
+            if (card && slotIndex >= 0 && slotIndex < 40) {
+                currentDeck[slotIndex] = card;
+                saveDeckState();
+                renderDeck();
+                updateDeckCount();
+            }
+        }
+
+        // Allow dragging from deck slots back to collection (remove from deck)
+        document.addEventListener('dragstart', function(e) {
+            if (e.target.closest('.deck-slot .card')) {
+                const cardIndex = parseInt(e.target.getAttribute('data-card-index'));
+                e.dataTransfer.setData('text/plain', 'remove:' + cardIndex);
+                e.target.classList.add('dragging');
+            }
+        });
+
+        document.addEventListener('drop', function(e) {
+            if (!e.target.closest('.deck-slot')) {
+                e.preventDefault();
+                const data = e.dataTransfer.getData('text/plain');
+                if (data.startsWith('remove:')) {
+                    const cardIndex = parseInt(data.split(':')[1]);
+                    currentDeck[cardIndex] = null;
+                    saveDeckState();
+                    renderDeck();
+                    updateDeckCount();
+                }
+            }
+        });
+
+        document.addEventListener('dragover', function(e) {
+            e.preventDefault();
+        });
+
+        document.addEventListener('dragend', function(e) {
+            document.querySelectorAll('.card.dragging').forEach(el => {
+                el.classList.remove('dragging');
+            });
+        });
+
+        loadDeckState();
     </script>
 </body>
 </html>
@@ -403,6 +625,10 @@ def main_page():
 @app.route("/second")
 def second_page():
     return render_template_string(CLICKER_TEMPLATE, all_cards=all_cards)
+
+@app.route("/third")
+def third_page():
+    return render_template_string(DECK_BUILDER_TEMPLATE, all_cards=all_cards)
 
 @app.route("/load_cards")
 def load_cards():
