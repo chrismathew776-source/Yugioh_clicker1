@@ -433,7 +433,6 @@ CLICKER_TEMPLATE = """
 """
 
 # ------------------------
-# ------------------------
 # Deck Builder page template - FIXED DRAG & DROP
 # ------------------------
 DECK_BUILDER_TEMPLATE = """
@@ -796,3 +795,53 @@ DECK_BUILDER_TEMPLATE = """
     </script>
 </body>
 </html>
+"""
+
+# ------------------------
+# Routes
+# ------------------------
+@app.route("/")
+def main_page():
+    return render_template_string(MAIN_TEMPLATE)
+
+@app.route("/second")
+def second_page():
+    return render_template_string(CLICKER_TEMPLATE, all_cards=all_cards)
+
+@app.route("/third")
+def third_page():
+    return render_template_string(DECK_BUILDER_TEMPLATE, all_cards=all_cards)
+
+@app.route("/load_cards")
+def load_cards():
+    page=int(request.args.get("page",0))
+    per_page=200
+    search=request.args.get("search","").strip().lower()
+    type_filter=request.args.get("type","").strip()
+    atk_filter=request.args.get("atk","").strip()
+
+    filtered=all_cards
+    if search: filtered=[c for c in filtered if search in c['name'].lower()]
+    if type_filter: filtered=[c for c in filtered if c['type']==type_filter]
+    if atk_filter:
+        def atk_check(a):
+            atk = a['atk'] or 0
+            if atk_filter=='0-999': return atk<=999
+            if atk_filter=='1000-1999': return atk>=1000 and atk<=1999
+            if atk_filter=='2000-2999': return atk>=2000 and atk<=2999
+            if atk_filter=='3000-3999': return atk>=3000 and atk<=3999
+            if atk_filter=='4000-4999': return atk>=4000 and atk<=4999
+            if atk_filter=='5000+': return atk>=5000
+            return True
+        filtered=[c for c in filtered if atk_check(c)]
+
+    start=page*per_page
+    end=start+per_page
+    return jsonify(filtered[start:end])
+
+# ------------------------
+# Run server
+# ------------------------
+if __name__=="__main__":
+    port = int(os.environ.get("PORT", 8080))
+    app.run(host="0.0.0.0", port=port, debug=True)
