@@ -433,7 +433,8 @@ CLICKER_TEMPLATE = """
 """
 
 # ------------------------
-# Deck Builder page template
+# ------------------------
+# Deck Builder page template - FIXED DRAG & DROP
 # ------------------------
 DECK_BUILDER_TEMPLATE = """
 <!DOCTYPE html>
@@ -454,19 +455,95 @@ DECK_BUILDER_TEMPLATE = """
     <style>
         body { font-family:'Segoe UI',sans-serif;background:#0d0d0d;color:white;padding:20px; }
         h1{color:#ffcc00;text-align:center;}
-        .deck-container { display: grid; grid-template-columns: repeat(8, 1fr); gap: 10px; margin: 20px 0; padding: 20px; background: #1a1a1a; border-radius: 10px; }
-        .deck-slot { width: 80px; height: 120px; border: 2px dashed #444; border-radius: 8px; display: flex; align-items: center; justify-content: center; background: #2a2a2a; transition: all 0.2s; }
-        .deck-slot:hover { border-color: #666; }
+        .deck-container { 
+            display: grid; 
+            grid-template-columns: repeat(8, 1fr); 
+            gap: 10px; 
+            margin: 20px 0; 
+            padding: 20px; 
+            background: #1a1a1a; 
+            border-radius: 10px; 
+            min-height: 300px;
+        }
+        .deck-slot { 
+            width: 80px; 
+            height: 120px; 
+            border: 2px dashed #444; 
+            border-radius: 8px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            background: #2a2a2a; 
+            transition: all 0.2s; 
+        }
+        .deck-slot:hover { border-color: #666; background: #333; }
+        .deck-slot.drag-over { border-color: #4CAF50; background: #1e3a1e; }
         .deck-slot.occupied { border: 2px solid #4CAF50; }
-        .card { background:#1a1a1a; border-radius:10px; padding:10px; width:100px; text-align:center; box-shadow:0 0 10px rgba(255,255,255,0.1); transition:transform 0.2s; cursor: grab; }
+        .card { 
+            background:#1a1a1a; 
+            border-radius:10px; 
+            padding:5px; 
+            width:70px; 
+            text-align:center; 
+            box-shadow:0 0 10px rgba(255,255,255,0.1); 
+            transition: all 0.2s; 
+            cursor: grab;
+            user-select: none;
+        }
         .card:hover { transform:scale(1.05); }
-        .card img { width:100%; border-radius:8px; }
-        .card.dragging { opacity: 0.5; }
-        .collection-container { display:flex; flex-wrap:wrap; justify-content:center; gap:15px; margin-top:20px; max-height: 400px; overflow-y: auto; padding: 10px; }
-        a.button { display:inline-block; padding:10px 20px; margin:10px; background-color:#4CAF50; color:white; border-radius:5px; text-decoration:none; }
+        .card.dragging { 
+            opacity: 0.7; 
+            transform: rotate(5deg) scale(1.1);
+            z-index: 1000;
+            position: relative;
+        }
+        .card img { width:100%; border-radius:6px; }
+        .collection-container { 
+            display:flex; 
+            flex-wrap:wrap; 
+            justify-content:center; 
+            gap:10px; 
+            margin-top:20px; 
+            max-height: 500px; 
+            overflow-y: auto; 
+            padding: 15px;
+            background: #1a1a1a;
+            border-radius: 10px;
+        }
+        a.button { 
+            display:inline-block;
+            padding:10px 20px; 
+            margin:10px; 
+            background-color:#4CAF50; 
+            color:white; 
+            border-radius:5px; 
+            text-decoration:none; 
+        }
         a.button:hover { background-color:#45a049; }
         .godly-tier { border: 3px solid gold; box-shadow: 0 0 15px gold; }
-        .deck-count { text-align: center; margin: 10px 0; font-size: 18px; }
+        .deck-count { 
+            text-align: center; 
+            margin: 10px 0; 
+            font-size: 18px; 
+            background: #2a2a2a;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .card-name { 
+            font-size: 10px; 
+            margin-top: 5px; 
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 70px;
+        }
+        .clear-deck { 
+            background: #ff4444; 
+            margin-left: 10px; 
+        }
+        .clear-deck:hover { 
+            background: #cc0000; 
+        }
     </style>
 </head>
 <body>
@@ -477,32 +554,44 @@ DECK_BUILDER_TEMPLATE = """
         <a href="/third" class="button">Deck Builder</a>
     </div>
 
-    <div class="deck-count">Deck: <span id="deckCount">0</span>/40</div>
+    <div class="deck-count">
+        Deck: <span id="deckCount">0</span>/40
+        <button class="button clear-deck" onclick="clearDeck()">Clear Deck</button>
+    </div>
     
     <h2>Your Deck</h2>
     <div class="deck-container" id="deckContainer"></div>
 
-    <h2>Your Collection</h2>
+    <h2>Your Collection (Drag cards to deck slots)</h2>
     <div class="collection-container" id="collectionContainer"></div>
 
     <script>
         const allCards = {{ all_cards|tojson }};
         const godlyTierCards = ["Obelisk the Tormentor", "The Winged Dragon of Ra", "Slifer the Sky Dragon", "Pot of Greed"];
         let purchasedCards = [];
-        let currentDeck = [];
+        let currentDeck = Array(40).fill(null);
+        let draggedCard = null;
 
         function loadDeckState() {
             const savedDeck = JSON.parse(localStorage.getItem('currentDeck') || '[]');
             const savedCards = JSON.parse(localStorage.getItem('purchasedCards') || '[]');
             purchasedCards = allCards.filter(c => savedCards.includes(c.name));
-            currentDeck = savedDeck.map(cardName => purchasedCards.find(c => c.name === cardName)).filter(Boolean);
+            
+            // Load deck, ensuring it's exactly 40 slots
+            currentDeck = Array(40).fill(null);
+            savedDeck.forEach((cardName, index) => {
+                if (index < 40 && cardName) {
+                    currentDeck[index] = purchasedCards.find(c => c.name === cardName) || null;
+                }
+            });
+            
             renderDeck();
             renderCollection();
             updateDeckCount();
         }
 
         function saveDeckState() {
-            localStorage.setItem('currentDeck', JSON.stringify(currentDeck.map(c => c.name)));
+            localStorage.setItem('currentDeck', JSON.stringify(currentDeck.map(c => c ? c.name : null)));
         }
 
         function renderDeck() {
@@ -511,23 +600,33 @@ DECK_BUILDER_TEMPLATE = """
             
             for (let i = 0; i < 40; i++) {
                 const slot = document.createElement('div');
-                slot.className = 'deck-slot';
+                slot.className = currentDeck[i] ? 'deck-slot occupied' : 'deck-slot';
                 slot.id = `slot-${i}`;
                 slot.setAttribute('data-slot-index', i);
                 
                 if (currentDeck[i]) {
                     const card = currentDeck[i];
                     const isGodly = godlyTierCards.includes(card.name);
-                    slot.className += ' occupied';
-                    slot.innerHTML = `
-                        <div class="card ${isGodly ? 'godly-tier' : ''}" draggable="true" data-card-index="${i}">
-                            <img src="${card.img}" alt="${card.name}" loading="lazy">
-                        </div>
+                    const cardDiv = document.createElement('div');
+                    cardDiv.className = `card ${isGodly ? 'godly-tier' : ''}`;
+                    cardDiv.draggable = true;
+                    cardDiv.setAttribute('data-slot-index', i);
+                    cardDiv.innerHTML = `
+                        <img src="${card.img}" alt="${card.name}" loading="lazy">
+                        <div class="card-name">${card.name}</div>
                     `;
+                    
+                    cardDiv.addEventListener('dragstart', handleDeckCardDragStart);
+                    cardDiv.addEventListener('dragend', handleDragEnd);
+                    slot.appendChild(cardDiv);
                 }
                 
+                // Slot event listeners
                 slot.addEventListener('dragover', handleDragOver);
+                slot.addEventListener('dragenter', handleDragEnter);
+                slot.addEventListener('dragleave', handleDragLeave);
                 slot.addEventListener('drop', handleDrop);
+                
                 deckContainer.appendChild(slot);
             }
         }
@@ -536,130 +635,164 @@ DECK_BUILDER_TEMPLATE = """
             const collectionContainer = document.getElementById('collectionContainer');
             collectionContainer.innerHTML = '';
             
-            purchasedCards.forEach((card, index) => {
+            if (purchasedCards.length === 0) {
+                collectionContainer.innerHTML = '<p>No cards purchased yet! Go to the Clicker page to buy cards.</p>';
+                return;
+            }
+            
+            purchasedCards.forEach((card) => {
                 const isGodly = godlyTierCards.includes(card.name);
                 const cardDiv = document.createElement('div');
                 cardDiv.className = `card ${isGodly ? 'godly-tier' : ''}`;
                 cardDiv.draggable = true;
                 cardDiv.setAttribute('data-card-name', card.name);
-                cardDiv.innerHTML = `<img src="${card.img}" alt="${card.name}" loading="lazy"><div style="font-size:12px;margin-top:5px;">${card.name}</div>`;
+                cardDiv.innerHTML = `
+                    <img src="${card.img}" alt="${card.name}" loading="lazy">
+                    <div class="card-name">${card.name}</div>
+                `;
                 
-                cardDiv.addEventListener('dragstart', handleDragStart);
+                cardDiv.addEventListener('dragstart', handleCollectionCardDragStart);
+                cardDiv.addEventListener('dragend', handleDragEnd);
                 collectionContainer.appendChild(cardDiv);
             });
         }
 
-        function updateDeckCount() {
-            document.getElementById('deckCount').textContent = currentDeck.filter(card => card).length;
+        function handleCollectionCardDragStart(e) {
+            draggedCard = {
+                type: 'collection',
+                name: e.target.getAttribute('data-card-name')
+            };
+            e.target.classList.add('dragging');
+            e.dataTransfer.setData('text/plain', JSON.stringify(draggedCard));
+            e.dataTransfer.effectAllowed = 'copy';
         }
 
-        function handleDragStart(e) {
-            e.dataTransfer.setData('text/plain', e.target.getAttribute('data-card-name'));
+        function handleDeckCardDragStart(e) {
+            const slotIndex = parseInt(e.target.getAttribute('data-slot-index'));
+            draggedCard = {
+                type: 'deck',
+                slotIndex: slotIndex
+            };
             e.target.classList.add('dragging');
+            e.dataTransfer.setData('text/plain', JSON.stringify(draggedCard));
+            e.dataTransfer.effectAllowed = 'move';
         }
 
         function handleDragOver(e) {
             e.preventDefault();
+            e.dataTransfer.dropEffect = 'copy';
+        }
+
+        function handleDragEnter(e) {
+            e.preventDefault();
+            if (e.target.classList.contains('deck-slot')) {
+                e.target.classList.add('drag-over');
+            }
+        }
+
+        function handleDragLeave(e) {
+            if (e.target.classList.contains('deck-slot')) {
+                e.target.classList.remove('drag-over');
+            }
         }
 
         function handleDrop(e) {
             e.preventDefault();
-            const cardName = e.dataTransfer.getData('text/plain');
-            const slotIndex = parseInt(e.target.getAttribute('data-slot-index') || e.target.closest('.deck-slot').getAttribute('data-slot-index'));
+            e.stopPropagation();
             
-            const card = purchasedCards.find(c => c.name === cardName);
-            if (card && slotIndex >= 0 && slotIndex < 40) {
-                currentDeck[slotIndex] = card;
+            // Remove drag-over class from all slots
+            document.querySelectorAll('.deck-slot.drag-over').forEach(slot => {
+                slot.classList.remove('drag-over');
+            });
+            
+            const slot = e.target.closest('.deck-slot');
+            if (!slot) return;
+            
+            const slotIndex = parseInt(slot.getAttribute('data-slot-index'));
+            const data = e.dataTransfer.getData('text/plain');
+            
+            try {
+                const dragData = JSON.parse(data);
+                
+                if (dragData.type === 'collection') {
+                    // Adding card from collection to deck
+                    const card = purchasedCards.find(c => c.name === dragData.name);
+                    if (card) {
+                        currentDeck[slotIndex] = card;
+                        saveDeckState();
+                        renderDeck();
+                        updateDeckCount();
+                    }
+                } else if (dragData.type === 'deck') {
+                    // Moving card within deck or removing it
+                    if (slotIndex !== dragData.slotIndex) {
+                        // Swap cards if moving to different slot
+                        const temp = currentDeck[slotIndex];
+                        currentDeck[slotIndex] = currentDeck[dragData.slotIndex];
+                        currentDeck[dragData.slotIndex] = temp;
+                        saveDeckState();
+                        renderDeck();
+                        updateDeckCount();
+                    }
+                }
+            } catch (error) {
+                console.error('Drop error:', error);
+            }
+        }
+
+        function handleDragEnd(e) {
+            // Remove dragging class from all cards
+            document.querySelectorAll('.card.dragging').forEach(card => {
+                card.classList.remove('dragging');
+            });
+            draggedCard = null;
+            
+            // Remove drag-over class from all slots
+            document.querySelectorAll('.deck-slot.drag-over').forEach(slot => {
+                slot.classList.remove('drag-over');
+            });
+        }
+
+        function clearDeck() {
+            if (confirm('Are you sure you want to clear your entire deck?')) {
+                currentDeck = Array(40).fill(null);
                 saveDeckState();
                 renderDeck();
                 updateDeckCount();
             }
         }
 
-        // Allow dragging from deck slots back to collection (remove from deck)
-        document.addEventListener('dragstart', function(e) {
-            if (e.target.closest('.deck-slot .card')) {
-                const cardIndex = parseInt(e.target.getAttribute('data-card-index'));
-                e.dataTransfer.setData('text/plain', 'remove:' + cardIndex);
-                e.target.classList.add('dragging');
-            }
+        function updateDeckCount() {
+            const count = currentDeck.filter(card => card !== null).length;
+            document.getElementById('deckCount').textContent = count;
+        }
+
+        // Allow dropping anywhere on the page (for removing cards)
+        document.addEventListener('dragover', function(e) {
+            e.preventDefault();
         });
 
         document.addEventListener('drop', function(e) {
             if (!e.target.closest('.deck-slot')) {
                 e.preventDefault();
                 const data = e.dataTransfer.getData('text/plain');
-                if (data.startsWith('remove:')) {
-                    const cardIndex = parseInt(data.split(':')[1]);
-                    currentDeck[cardIndex] = null;
-                    saveDeckState();
-                    renderDeck();
-                    updateDeckCount();
+                try {
+                    const dragData = JSON.parse(data);
+                    if (dragData.type === 'deck') {
+                        // Remove card from deck by dropping outside
+                        currentDeck[dragData.slotIndex] = null;
+                        saveDeckState();
+                        renderDeck();
+                        updateDeckCount();
+                    }
+                } catch (error) {
+                    // Ignore non-JSON data
                 }
             }
         });
 
-        document.addEventListener('dragover', function(e) {
-            e.preventDefault();
-        });
-
-        document.addEventListener('dragend', function(e) {
-            document.querySelectorAll('.card.dragging').forEach(el => {
-                el.classList.remove('dragging');
-            });
-        });
-
+        // Initialize
         loadDeckState();
     </script>
 </body>
 </html>
-"""
-
-# ------------------------
-# Routes
-# ------------------------
-@app.route("/")
-def main_page():
-    return render_template_string(MAIN_TEMPLATE)
-
-@app.route("/second")
-def second_page():
-    return render_template_string(CLICKER_TEMPLATE, all_cards=all_cards)
-
-@app.route("/third")
-def third_page():
-    return render_template_string(DECK_BUILDER_TEMPLATE, all_cards=all_cards)
-
-@app.route("/load_cards")
-def load_cards():
-    page=int(request.args.get("page",0))
-    per_page=200
-    search=request.args.get("search","").strip().lower()
-    type_filter=request.args.get("type","").strip()
-    atk_filter=request.args.get("atk","").strip()
-
-    filtered=all_cards
-    if search: filtered=[c for c in filtered if search in c['name'].lower()]
-    if type_filter: filtered=[c for c in filtered if c['type']==type_filter]
-    if atk_filter:
-        def atk_check(a):
-            atk = a['atk'] or 0
-            if atk_filter=='0-999': return atk<=999
-            if atk_filter=='1000-1999': return atk>=1000 and atk<=1999
-            if atk_filter=='2000-2999': return atk>=2000 and atk<=2999
-            if atk_filter=='3000-3999': return atk>=3000 and atk<=3999
-            if atk_filter=='4000-4999': return atk>=4000 and atk<=4999
-            if atk_filter=='5000+': return atk>=5000
-            return True
-        filtered=[c for c in filtered if atk_check(c)]
-
-    start=page*per_page
-    end=start+per_page
-    return jsonify(filtered[start:end])
-
-# ------------------------
-# Run server
-# ------------------------
-if __name__=="__main__":
-    port = int(os.environ.get("PORT", 8080))
-    app.run(host="0.0.0.0", port=port, debug=True)
