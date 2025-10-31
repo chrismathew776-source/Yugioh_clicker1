@@ -105,7 +105,7 @@ MAIN_TEMPLATE = """
             if(loading) return;
             loading = true;
             loadingText.style.display = 'block';
-            fetch(`/load_cards?page=${page}&search=${searchTerm}&type=${typeTerm}&atk=${atkFilter}`)
+            fetch(`/load_cards?page=${page}&search=${searchTerm}&type=${typeTerm}&atk=${atkTerm}`)
                 .then(res => res.json())
                 .then(data=>{
                     data.forEach(card=>{
@@ -120,8 +120,8 @@ MAIN_TEMPLATE = """
                 });
         }
 
-        window.addEventListener('scroll', ()=>{
-            if(window.innerHeight + window.scrollY >= document.body.offsetHeight - 500) loadCards();
+        window.addEventListener('scroll', ()=>{ 
+            if(window.innerHeight + window.scrollY >= document.body.offsetHeight - 500) loadCards(); 
         });
 
         document.getElementById('searchForm').addEventListener('submit', e=>{
@@ -170,7 +170,7 @@ CLICKER_TEMPLATE = """
         a.button{display:inline-block;padding:10px 20px;margin-top:10px;background-color:#4CAF50;color:white;border-radius:5px;text-decoration:none;}
         a.button:hover{background-color:#45a049;}
         #clickButton { width:257px; cursor:pointer; touch-action: manipulation; }
-        #clickButton:active { opacity:0.8; /* subtle feedback instead of zoom */ }
+        #clickButton:active { opacity:0.8; }
         form { margin-bottom: 20px; }
         input[type=text], select { padding: 6px; border-radius:5px; border:none; margin-right:5px; }
         button { padding:6px 10px; border-radius:5px; border:none; background-color:#4CAF50; color:white; cursor:pointer; }
