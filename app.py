@@ -132,7 +132,7 @@ loadCards();
 """
 
 # ------------------------
-# Clicker page template
+# Clicker page template with instant-click
 # ------------------------
 CLICKER_TEMPLATE = """
 <!DOCTYPE html>
@@ -144,12 +144,11 @@ CLICKER_TEMPLATE = """
 body { font-family:'Segoe UI',sans-serif;background:#0d0d0d;color:white;text-align:center;padding:20px;position:relative; }
 h1{color:#ffcc00;}
 .cards-container,.collection-container{display:flex;flex-wrap:wrap;justify-content:center;gap:15px;margin-top:20px;}
-.card{background:#1a1a1a;border-radius:10px;padding:10px;width:180px;text-align:center;box-shadow:0 0 10px rgba(255,255,255,0.1);transition:transform 0.2s;}
-.card:hover{transform:scale(1.05);}
+.card{background:#1a1a1a;border-radius:10px;padding:10px;width:180px;text-align:center;box-shadow:0 0 10px rgba(255,255,255,0.1);}
 .card img{width:100%;border-radius:8px;}
 a.button{display:inline-block;padding:10px 20px;margin-top:10px;background-color:#4CAF50;color:white;border-radius:5px;text-decoration:none;}
 a.button:hover{background-color:#45a049;}
-#clickButton { width:257px; cursor:pointer; transition: transform 0.1s; }
+#clickButton { width:257px; cursor:pointer; }
 form { margin-bottom: 20px; }
 input[type=text], select { padding: 6px; border-radius:5px; border:none; margin-right:5px; }
 button { padding:6px 10px; border-radius:5px; border:none; background-color:#4CAF50; color:white; cursor:pointer; }
@@ -313,13 +312,11 @@ function updateClickValue(){
 }
 function updateDisplay(){coinsDisplay.textContent=coins;}
 
-// Click giant card
+// Click giant card (instant, no delay)
 clickButton.addEventListener('click', ()=>{
-    coins+=clickValue;
+    coins += clickValue;
     updateDisplay();
     saveState();
-    clickButton.style.transform='scale(0.95)';
-    setTimeout(()=>{clickButton.style.transform='scale(1)';},100);
 });
 
 // Shop search/filter
@@ -419,3 +416,4 @@ def load_cards():
 # ------------------------
 if __name__=="__main__":
     app.run(host="0.0.0.0", port=8080, debug=True)
+
