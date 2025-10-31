@@ -1,5 +1,6 @@
 from flask import Flask, render_template_string, request, jsonify
 import requests
+import os
 
 app = Flask(__name__)
 
@@ -110,9 +111,7 @@ function loadCards() {
         });
 }
 
-window.addEventListener('scroll', ()=>{
-    if(window.innerHeight + window.scrollY >= document.body.offsetHeight - 500) loadCards();
-});
+window.addEventListener('scroll', ()=>{ if(window.innerHeight + window.scrollY >= document.body.offsetHeight - 500) loadCards(); });
 
 document.getElementById('searchForm').addEventListener('submit', e=>{
     e.preventDefault();
@@ -132,7 +131,7 @@ loadCards();
 """
 
 # ------------------------
-# Clicker page template with instant-click
+# Clicker page template
 # ------------------------
 CLICKER_TEMPLATE = """
 <!DOCTYPE html>
@@ -144,11 +143,19 @@ CLICKER_TEMPLATE = """
 body { font-family:'Segoe UI',sans-serif;background:#0d0d0d;color:white;text-align:center;padding:20px;position:relative; }
 h1{color:#ffcc00;}
 .cards-container,.collection-container{display:flex;flex-wrap:wrap;justify-content:center;gap:15px;margin-top:20px;}
-.card{background:#1a1a1a;border-radius:10px;padding:10px;width:180px;text-align:center;box-shadow:0 0 10px rgba(255,255,255,0.1);}
+.card{background:#1a1a1a;border-radius:10px;padding:10px;width:180px;text-align:center;box-shadow:0 0 10px rgba(255,255,255,0.1);transition:transform 0.2s;}
+.card:hover{transform:scale(1.05);}
 .card img{width:100%;border-radius:8px;}
 a.button{display:inline-block;padding:10px 20px;margin-top:10px;background-color:#4CAF50;color:white;border-radius:5px;text-decoration:none;}
 a.button:hover{background-color:#45a049;}
-#clickButton { width:257px; cursor:pointer; }
+#clickButton {
+    width:257px;
+    cursor:pointer;
+    touch-action: manipulation;
+}
+#clickButton:active {
+    opacity:0.8; /* subtle feedback instead of zoom */
+}
 form { margin-bottom: 20px; }
 input[type=text], select { padding: 6px; border-radius:5px; border:none; margin-right:5px; }
 button { padding:6px 10px; border-radius:5px; border:none; background-color:#4CAF50; color:white; cursor:pointer; }
@@ -213,7 +220,6 @@ let searchTerm='';
 let typeTerm='';
 let atkTerm='';
 
-// Price & boost functions
 function getCardPrice(card){
     const atk=card.atk||0;
     if(atk<=999) return 500;
@@ -235,7 +241,6 @@ function getCardBoost(card){
     return 500;
 }
 
-// Save/load
 function saveState(){
     localStorage.setItem('coins', coins);
     localStorage.setItem('purchasedCards', JSON.stringify(purchasedCards.map(c=>c.name)));
@@ -250,7 +255,6 @@ function loadState(){
     updateDisplay();
 }
 
-// Load shop
 function loadShop(){
     if(shopLoading || viewingPurchased) return;
     shopLoading = true;
@@ -271,13 +275,11 @@ function loadShop(){
     loadingShop.style.display='none';
 }
 
-// Scroll listener
 window.addEventListener('scroll', ()=>{
     if(viewingPurchased) return;
     if(window.innerHeight + window.scrollY >= document.body.offsetHeight - 500) loadShop();
 });
 
-// Buy card
 function buyCard(index){
     const card = allCards[index];
     const price = getCardPrice(card);
@@ -295,7 +297,6 @@ function buyCard(index){
     }
 }
 
-// Update collection and click value
 function updateCollection(){
     collectionContainer.innerHTML='';
     purchasedCards.forEach(card=>{
@@ -312,14 +313,16 @@ function updateClickValue(){
 }
 function updateDisplay(){coinsDisplay.textContent=coins;}
 
-// Click giant card (instant, no delay)
-clickButton.addEventListener('click', ()=>{
+function addCoins(e){
+    e.preventDefault();
     coins += clickValue;
     updateDisplay();
     saveState();
-});
+}
 
-// Shop search/filter
+clickButton.addEventListener('click', addCoins);
+clickButton.addEventListener('touchstart', addCoins);
+
 document.getElementById('shopSearchForm').addEventListener('submit', e=>{
     e.preventDefault();
     viewingPurchased=false;
@@ -346,7 +349,6 @@ document.getElementById('shopSearchForm').addEventListener('submit', e=>{
     loadShop();
 });
 
-// Purchased Cards button
 document.getElementById('showPurchasedBtn').addEventListener('click', ()=>{
     viewingPurchased=true;
     shopContainer.innerHTML='';
@@ -364,7 +366,6 @@ document.getElementById('showPurchasedBtn').addEventListener('click', ()=>{
     });
 });
 
-// Initial load
 loadState();
 loadShop();
 updateDisplay();
@@ -415,5 +416,7 @@ def load_cards():
 # Run server
 # ------------------------
 if __name__=="__main__":
-    app.run(host="0.0.0.0", port=8080, debug=True)
+    port = int(os.environ.get("PORT", 8080))
+    app.run(host="0.0.0.0", port=port, debug=True)
+
 
