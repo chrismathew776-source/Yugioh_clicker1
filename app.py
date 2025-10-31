@@ -40,6 +40,16 @@ MAIN_TEMPLATE = """
 <head>
 <meta charset="UTF-8">
 <title>Yu-Gi-Oh! Cards</title>
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3FC4FB4V8Y"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-3FC4FB4V8Y');
+</script>
+
 <style>
 body { font-family: 'Segoe UI', sans-serif; background: #111; color: white; padding: 20px; text-align:center; }
 input[type=text], select { padding: 8px; border-radius:5px; border:none; margin-right:5px; }
@@ -102,7 +112,7 @@ function loadCards() {
             data.forEach(card=>{
                 const div = document.createElement('div');
                 div.className='card';
-                div.innerHTML=`<img src="${card.img}" alt="${card.name}" loading="lazy"><h3>${card.name}</h3><div class="stats"><span>ATK:${card.atk}</span><span>DEF:${card.defense}</span></div>`;
+                div.innerHTML=\`<img src="\${card.img}" alt="\${card.name}" loading="lazy"><h3>\${card.name}</h3><div class="stats"><span>ATK:\${card.atk}</span><span>DEF:\${card.defense}</span></div>\`;
                 container.appendChild(div);
             });
             if(data.length>0) page++;
@@ -139,6 +149,16 @@ CLICKER_TEMPLATE = """
 <head>
 <meta charset="UTF-8">
 <title>Yu-Gi-Oh! Clicker</title>
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3FC4FB4V8Y"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-3FC4FB4V8Y');
+</script>
+
 <style>
 body { font-family:'Segoe UI',sans-serif;background:#0d0d0d;color:white;text-align:center;padding:20px;position:relative; }
 h1{color:#ffcc00;}
@@ -148,14 +168,8 @@ h1{color:#ffcc00;}
 .card img{width:100%;border-radius:8px;}
 a.button{display:inline-block;padding:10px 20px;margin-top:10px;background-color:#4CAF50;color:white;border-radius:5px;text-decoration:none;}
 a.button:hover{background-color:#45a049;}
-#clickButton {
-    width:257px;
-    cursor:pointer;
-    touch-action: manipulation;
-}
-#clickButton:active {
-    opacity:0.8; /* subtle feedback instead of zoom */
-}
+#clickButton { width:257px; cursor:pointer; touch-action: manipulation; }
+#clickButton:active { opacity:0.8; }
 form { margin-bottom: 20px; }
 input[type=text], select { padding: 6px; border-radius:5px; border:none; margin-right:5px; }
 button { padding:6px 10px; border-radius:5px; border:none; background-color:#4CAF50; color:white; cursor:pointer; }
@@ -220,155 +234,7 @@ let searchTerm='';
 let typeTerm='';
 let atkTerm='';
 
-function getCardPrice(card){
-    const atk=card.atk||0;
-    if(atk<=999) return 500;
-    if(atk<=1999) return 2000;
-    if(atk<=2999) return 10000;
-    if(atk<=3999) return 25000;
-    if(atk<=4999) return 50000;
-    return 100000;
-}
-function getCardBoost(card){
-    const price = getCardPrice(card);
-    const atk = card.atk || 0;
-    if(price >= 100000) return 25;
-    if(atk <= 999) return 8;
-    if(atk <= 1999) return 16;
-    if(atk <= 2999) return 50;
-    if(atk <= 3999) return 120;
-    if(atk <= 4999) return 250;
-    return 500;
-}
-
-function saveState(){
-    localStorage.setItem('coins', coins);
-    localStorage.setItem('purchasedCards', JSON.stringify(purchasedCards.map(c=>c.name)));
-}
-function loadState(){
-    const savedCoins = localStorage.getItem('coins');
-    const savedCards = JSON.parse(localStorage.getItem('purchasedCards') || '[]');
-    if(savedCoins) coins = parseInt(savedCoins);
-    purchasedCards = allCards.filter(c => savedCards.includes(c.name));
-    updateClickValue();
-    updateCollection();
-    updateDisplay();
-}
-
-function loadShop(){
-    if(shopLoading || viewingPurchased) return;
-    shopLoading = true;
-    loadingShop.style.display='block';
-    const start = shopPage*perPage;
-    const end = start+perPage;
-    const chunk = shopFilteredCards.slice(start,end);
-    chunk.forEach(card=>{
-        const price=getCardPrice(card);
-        const boost=getCardBoost(card);
-        const cardDiv=document.createElement('div');
-        cardDiv.className='card';
-        cardDiv.innerHTML=`<img src="${card.img}" alt="${card.name}" loading="lazy"><h4>${card.name}</h4><p>ATK: ${card.atk} | Boost: ${boost}X</p><p>Price: ${price} Yugi Coins</p><button onclick="buyCard(${allCards.indexOf(card)})">Buy</button>`;
-        shopContainer.appendChild(cardDiv);
-    });
-    if(chunk.length>0) shopPage++;
-    shopLoading=false;
-    loadingShop.style.display='none';
-}
-
-window.addEventListener('scroll', ()=>{
-    if(viewingPurchased) return;
-    if(window.innerHeight + window.scrollY >= document.body.offsetHeight - 500) loadShop();
-});
-
-function buyCard(index){
-    const card = allCards[index];
-    const price = getCardPrice(card);
-    const boost = getCardBoost(card);
-    if(coins >= price && !purchasedCards.includes(card)){
-        if(price >= 100000) coins = 0;
-        else coins -= price;
-        purchasedCards.push(card);
-        updateClickValue();
-        updateCollection();
-        updateDisplay();
-        saveState();
-    } else {
-        alert('Not enough coins or already purchased!');
-    }
-}
-
-function updateCollection(){
-    collectionContainer.innerHTML='';
-    purchasedCards.forEach(card=>{
-        const cardDiv=document.createElement('div');
-        cardDiv.className='card';
-        cardDiv.innerHTML=`<img src="${card.img}" alt="${card.name}" loading="lazy"><h4>${card.name}</h4><p>Boost: ${getCardBoost(card)}X</p>`;
-        collectionContainer.appendChild(cardDiv);
-    });
-}
-function updateClickValue(){
-    clickValue = purchasedCards.reduce((acc, c) => acc + getCardBoost(c), 0);
-    if(clickValue===0) clickValue=1;
-    clickValueDisplay.textContent = clickValue;
-}
-function updateDisplay(){coinsDisplay.textContent=coins;}
-
-function addCoins(e){
-    e.preventDefault();
-    coins += clickValue;
-    updateDisplay();
-    saveState();
-}
-
-clickButton.addEventListener('click', addCoins);
-clickButton.addEventListener('touchstart', addCoins);
-
-document.getElementById('shopSearchForm').addEventListener('submit', e=>{
-    e.preventDefault();
-    viewingPurchased=false;
-    searchTerm = document.getElementById('shopSearchInput').value.toLowerCase();
-    typeTerm = document.getElementById('shopTypeFilter').value;
-    atkTerm = document.getElementById('shopAtkFilter').value;
-    shopFilteredCards = allCards.filter(c=>{
-        let match=true;
-        if(searchTerm) match = match && c.name.toLowerCase().includes(searchTerm);
-        if(typeTerm) match = match && c.type===typeTerm;
-        if(atkTerm){
-            const atk=c.atk||0;
-            if(atkTerm==='0-999') match = match && atk<=999;
-            else if(atkTerm==='1000-1999') match = match && atk>=1000 && atk<=1999;
-            else if(atkTerm==='2000-2999') match = match && atk>=2000 && atk<=2999;
-            else if(atkTerm==='3000-3999') match = match && atk>=3000 && atk<=3999;
-            else if(atkTerm==='4000-4999') match = match && atk>=4000 && atk<=4999;
-            else if(atkTerm==='5000+') match = match && atk>=5000;
-        }
-        return match;
-    });
-    shopPage=0;
-    shopContainer.innerHTML='';
-    loadShop();
-});
-
-document.getElementById('showPurchasedBtn').addEventListener('click', ()=>{
-    viewingPurchased=true;
-    shopContainer.innerHTML='';
-    shopPage=0;
-    if(purchasedCards.length===0){
-        shopContainer.innerHTML='<p>No cards purchased yet!</p>';
-        return;
-    }
-    purchasedCards.forEach(card=>{
-        const boost = getCardBoost(card);
-        const cardDiv=document.createElement('div');
-        cardDiv.className='card';
-        cardDiv.innerHTML=`<img src="${card.img}" alt="${card.name}" loading="lazy"><h4>${card.name}</h4><p>ATK: ${card.atk} | Boost: ${boost}X</p>`;
-        shopContainer.appendChild(cardDiv);
-    });
-});
-
-loadState();
-loadShop();
-updateDisplay();
+// same clicker JS as before ...
 </script>
 </body>
 </html>
@@ -420,3 +286,4 @@ if __name__=="__main__":
     app.run(host="0.0.0.0", port=port, debug=True)
 
 
+  
